@@ -4,46 +4,61 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const EMAIL_HOST = process.env.EMAIL_HOST || "smtp.gmail.com";
-const EMAIL_PORT = parseInt(process.env.EMAIL_PORT) || 587;
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-
 /**
  * Email Service - Handles all email operations
  */
-export const emailService = {
+class EmailService {
+  constructor() {
+    this.transporter = null;
+    this.fromEmail = process.env.EMAIL_USER || "noreply@eade-platform.com";
+    this.isConfigured = false;
+    this.initTransporter();
+  }
+
   /**
-   * Create a nodemailer transporter
-   * @returns {Object} Nodemailer transporter
+   * Initialize the Nodemailer transporter
    */
-  createTransporter() {
-    if (!EMAIL_USER || !EMAIL_PASS) {
+  initTransporter() {
+    const host = process.env.EMAIL_HOST || "smtp.gmail.com";
+    const port = parseInt(process.env.EMAIL_PORT) || 587;
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+
+    if (!user || !pass) {
       console.warn(
         "⚠️ Email credentials not configured. Email sending will fail.",
       );
-      return null;
+      this.isConfigured = false;
+      return;
     }
 
-    return nodemailer.createTransport({
-      host: EMAIL_HOST,
-      port: EMAIL_PORT,
-      secure: EMAIL_PORT === 465,
-      auth: {
-        user: EMAIL_USER,
-        pass: EMAIL_PASS,
-      },
-    });
-  },
+    try {
+      this.transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: { user, pass },
+        pool: true,
+        maxConnections: 5,
+        maxMessages: 100,
+        rateDelta: 1000,
+        rateLimit: 5,
+      });
+
+      this.isConfigured = true;
+      console.log("✅ Email service initialized successfully");
+    } catch (error) {
+      console.error("❌ Email service initialization failed:", error.message);
+      this.isConfigured = false;
+    }
+  }
 
   /**
-   * Check if email is configured
-   * @returns {boolean}
+   * Check if email service is configured
    */
-  isConfigured() {
-    return !!(EMAIL_USER && EMAIL_PASS);
-  },
+  isAvailable() {
+    return this.isConfigured && this.transporter !== null;
+  }
 
   /**
    * Send an email
@@ -51,6 +66,14 @@ export const emailService = {
    * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
    */
   async sendEmail(options) {
+    if (!this.isAvailable()) {
+      console.error("❌ Email service not configured");
+      return {
+        success: false,
+        error: new Error("Email service not configured"),
+      };
+    }
+
     try {
       const { to, subject, html, text, from, attachments, replyTo } = options;
 
@@ -72,52 +95,39 @@ export const emailService = {
         };
       }
 
-      if (!this.isConfigured()) {
-        console.warn("⚠️ Email not configured. Skipping email send.");
-        return {
-          success: false,
-          error: new Error("Email service not configured"),
-        };
-      }
-
-      const transporter = this.createTransporter();
-      if (!transporter) {
-        return {
-          success: false,
-          error: new Error("Failed to create email transporter"),
-        };
-      }
-
       const mailOptions = {
-        from: from || EMAIL_USER || "noreply@eade-platform.com",
-        to: to,
-        subject: subject,
+        from: from || this.fromEmail,
+        to: Array.isArray(to) ? to.join(", ") : to,
+        subject,
         text: text || null,
         html: html || null,
         attachments: attachments || [],
-        replyTo: replyTo || null,
+        replyTo: replyTo || this.fromEmail,
       };
 
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ Email sent to ${to}: ${subject}`);
+      const info = await this.transporter.sendMail(mailOptions);
+
+      console.log(
+        `✅ Email sent to ${Array.isArray(to) ? to.join(", ") : to}: ${subject}`,
+      );
       return {
         success: true,
         data: {
           messageId: info.messageId,
-          accepted: info.accepted,
-          rejected: info.rejected,
+          accepted: info.accepted || [],
+          rejected: info.rejected || [],
         },
       };
     } catch (error) {
       console.error("❌ Email sending error:", error.message);
       return { success: false, error };
     }
-  },
+  }
 
   /**
-   * Send a welcome email to a new user
+   * Send a welcome email to new users
    * @param {Object} options - { to, name, role }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendWelcomeEmail(options) {
     const { to, name, role } = options;
@@ -135,7 +145,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: #d1fae5; margin: 0;">Ethiopian Agricultural Digital Exchange</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -171,15 +181,15 @@ export const emailService = {
       </div>
     `;
 
-    const text = `Welcome to EADE, ${name || "User"}! You are registered as a ${roleDisplay}. Please visit ${FRONTEND_URL} to get started.`;
+    const text = `Welcome to EADE, ${name || "User"}! You are registered as a ${roleDisplay}. Visit eade-platform.com to get started.`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
+  }
 
   /**
-   * Send a verification email
+   * Send verification email
    * @param {Object} options - { to, name, verificationCode, verifyLink }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendVerificationEmail(options) {
     const { to, name, verificationCode, verifyLink } = options;
@@ -196,7 +206,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: #d1fae5; margin: 0;">Email Verification</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -231,12 +241,12 @@ export const emailService = {
     const text = `Verify your EADE account. Your verification code is: ${verificationCode}. Or click this link: ${verifyLink}`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
+  }
 
   /**
-   * Send a password reset email
+   * Send password reset email
    * @param {Object} options - { to, name, resetLink, resetCode }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendPasswordResetEmail(options) {
     const { to, name, resetLink, resetCode } = options;
@@ -253,7 +263,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: #d1fae5; margin: 0;">Password Reset</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -289,12 +299,12 @@ export const emailService = {
     const text = `Reset your EADE password. Your code is: ${resetCode}. Or click this link: ${resetLink}`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
+  }
 
   /**
-   * Send an offer notification email to a manager
+   * Send offer notification email
    * @param {Object} options - { to, buyerName, productName, quantity, price, listingLink }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendOfferNotificationEmail(options) {
     const { to, buyerName, productName, quantity, price, listingLink } =
@@ -312,7 +322,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: #d1fae5; margin: 0;">New Offer Received</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -340,12 +350,12 @@ export const emailService = {
     const text = `New offer from ${buyerName} for ${quantity} quintals of ${productName} at ${price} Birr/quintal.`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
+  }
 
   /**
-   * Send an offer accepted notification email to a buyer
+   * Send offer accepted notification email
    * @param {Object} options - { to, buyerName, productName, quantity, price, managerName }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendOfferAcceptedEmail(options) {
     const { to, buyerName, productName, quantity, price, managerName } =
@@ -363,7 +373,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: #d1fae5; margin: 0;">Offer Accepted</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -382,12 +392,12 @@ export const emailService = {
     const text = `Your offer for ${quantity} quintals of ${productName} has been accepted. Please contact the manager to arrange delivery.`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
+  }
 
   /**
-   * Send an expiry alert email to a manager
+   * Send expiry alert email
    * @param {Object} options - { to, productName, quantity, expiryDate, daysRemaining }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendExpiryAlertEmail(options) {
     const { to, productName, quantity, expiryDate, daysRemaining } = options;
@@ -410,7 +420,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; ${daysRemaining <= 1 ? "background-color: #dc2626;" : "background-color: #f59e0b;"} border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: ${daysRemaining <= 1 ? "#fca5a5" : "#fef3c7"}; margin: 0;">Expiry Alert</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -435,12 +445,12 @@ export const emailService = {
     const text = `${urgency}: ${quantity} quintals of ${productName} expire in ${daysRemaining} day(s) on ${expiryDate}.`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
+  }
 
   /**
-   * Send a new listing notification email to buyers
+   * Send new listing notification to buyers
    * @param {Object} options - { to, productName, quantity, price, location, listingLink }
-   * @returns {Promise<{ success: boolean, data: Object, error: Object }>}
+   * @returns {Promise<{ success: boolean }>}
    */
   async sendNewListingEmail(options) {
     const { to, productName, quantity, price, location, listingLink } = options;
@@ -457,7 +467,7 @@ export const emailService = {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
         <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">🌾 EADE</h1>
+          <h1 style="color: white; margin: 0;">EADE</h1>
           <p style="color: #d1fae5; margin: 0;">New Listing Available</p>
         </div>
         <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
@@ -483,7 +493,105 @@ export const emailService = {
     const text = `New listing available: ${quantity} quintals of ${productName} at ${price} Birr/quintal.`;
 
     return this.sendEmail({ to, subject, html, text });
-  },
-};
+  }
+
+  /**
+   * Send a generic notification email
+   * @param {Object} options - { to, subject, message, title, actionText, actionLink }
+   * @returns {Promise<{ success: boolean }>}
+   */
+  async sendNotificationEmail(options) {
+    const { to, subject, message, title, actionText, actionLink } = options;
+
+    if (!to) {
+      return {
+        success: false,
+        error: new Error("Recipient email is required"),
+      };
+    }
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb; border-radius: 10px;">
+        <div style="text-align: center; padding: 20px; background-color: #15803d; border-radius: 10px 10px 0 0;">
+          <h1 style="color: white; margin: 0;">EADE</h1>
+          <p style="color: #d1fae5; margin: 0;">Notification</p>
+        </div>
+        <div style="padding: 30px; background-color: white; border-radius: 0 0 10px 10px;">
+          <h2 style="color: #15803d;">${title || "Notification"}</h2>
+          <p>${message}</p>
+          ${
+            actionText && actionLink
+              ? `
+            <p style="text-align: center; margin-top: 20px;">
+              <a href="${actionLink}" style="display: inline-block; padding: 12px 30px; background-color: #15803d; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                ${actionText}
+              </a>
+            </p>
+          `
+              : ""
+          }
+        </div>
+      </div>
+    `;
+
+    const text = message;
+
+    return this.sendEmail({ to, subject, html, text });
+  }
+
+  /**
+   * Send bulk emails
+   * @param {Array} recipients - Array of { to, name } objects
+   * @param {Function} buildEmail - Function that returns { subject, html, text } for each recipient
+   * @returns {Promise<{ success: boolean, results: Array, errors: Array }>}
+   */
+  async sendBulkEmails(recipients, buildEmail) {
+    if (!this.isAvailable()) {
+      return {
+        success: false,
+        error: new Error("Email service not configured"),
+      };
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const recipient of recipients) {
+      try {
+        const emailData = buildEmail(recipient);
+        const result = await this.sendEmail({
+          to: recipient.to || recipient.email,
+          ...emailData,
+        });
+
+        if (result.success) {
+          results.push({
+            recipient: recipient.to || recipient.email,
+            success: true,
+          });
+        } else {
+          errors.push({
+            recipient: recipient.to || recipient.email,
+            error: result.error?.message,
+          });
+        }
+      } catch (error) {
+        errors.push({
+          recipient: recipient.to || recipient.email,
+          error: error.message,
+        });
+      }
+    }
+
+    return {
+      success: results.length > 0,
+      results,
+      errors,
+    };
+  }
+}
+
+// Singleton instance
+export const emailService = new EmailService();
 
 export default emailService;
