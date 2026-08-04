@@ -1,10 +1,9 @@
 /* frontend/src/index.css */
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Leaflet CSS required for maps */
-@import 'leaflet/dist/leaflet.css';
 
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {

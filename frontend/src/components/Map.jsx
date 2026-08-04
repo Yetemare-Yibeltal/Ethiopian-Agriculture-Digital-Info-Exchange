@@ -14,7 +14,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import { useLocation } from '../hooks/useLocation.js'
 import { formatDistance } from '../utils/formatters.js'
-import { Card } from './ui/Card.jsx'
+import Card from './ui/Card.jsx' // ✅ FIXED: default import
 import Button from './ui/Button.jsx'
 import {
   Loader2,
@@ -319,8 +319,6 @@ const Map = ({
   // CUSTOM POPUP
   // =============================================
   const renderPopup = listing => {
-    const isSelected = selectedListing?.id === listing.id
-
     return (
       <div className='min-w-[200px] max-w-[280px] p-2'>
         <div className='flex items-center gap-2 mb-2'>
@@ -412,68 +410,6 @@ const Map = ({
     if (!amount) return 'N/A'
     return `Br ${amount.toFixed(2)}`
   }
-
-  // =============================================
-  // MARKER CLUSTER OPTIONS
-  // =============================================
-  const clusterOptions = {
-    showCoverageOnHover: true,
-    zoomToBoundsOnClick: true,
-    spiderfyOnMaxZoom: true,
-    removeOutsideVisibleBounds: true,
-    maxClusterRadius: 50,
-    iconCreateFunction: cluster => {
-      const count = cluster.getChildCount()
-      const size = count > 100 ? 'large' : count > 50 ? 'medium' : 'small'
-
-      const colors = {
-        small: 'bg-primary-500',
-        medium: 'bg-yellow-500',
-        large: 'bg-red-500'
-      }
-
-      return L.divIcon({
-        html: `
-          <div style="
-            background: ${colors[size]};
-            border-radius: 50%;
-            width: ${size === 'large' ? 44 : size === 'medium' ? 36 : 28}px;
-            height: ${size === 'large' ? 44 : size === 'medium' ? 36 : 28}px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: ${size === 'large' ? 14 : size === 'medium' ? 12 : 10}px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            border: 2px solid white;
-          ">
-            ${count}
-          </div>
-        `,
-        className: 'marker-cluster-custom',
-        iconSize: [
-          size === 'large' ? 44 : size === 'medium' ? 36 : 28,
-          size === 'large' ? 44 : size === 'medium' ? 36 : 28
-        ],
-        iconAnchor: [
-          size === 'large' ? 22 : size === 'medium' ? 18 : 14,
-          size === 'large' ? 22 : size === 'medium' ? 18 : 14
-        ]
-      })
-    }
-  }
-
-  // =============================================
-  // GET MAP TILE URL BASED ON DARK MODE
-  // =============================================
-  const tileUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-  const attribution = darkMode
-    ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>'
-    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 
   // =============================================
   // LISTINGS WITH LOCATION

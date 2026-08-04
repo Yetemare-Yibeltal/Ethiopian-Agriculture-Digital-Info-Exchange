@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
-import { Card } from './ui/Card.jsx'
+import Card from './ui/Card.jsx' // ✅ FIXED: default import
 import { formatTimeAgo } from '../utils/formatters.js'
 
 const VoiceRecorder = ({
