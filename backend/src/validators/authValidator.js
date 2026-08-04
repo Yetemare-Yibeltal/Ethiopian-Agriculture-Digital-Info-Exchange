@@ -226,6 +226,18 @@ export const validateProfileUpdate = (data) => {
   return { error: null, value };
 };
 
+/**
+ * Combined validator for changing password
+ */
+export const validateChangePassword = (data) => {
+  const { error, value } = changePasswordSchema.validate(data, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  return { error, value: error ? null : value };
+};
+
 export default {
   registerSchema,
   loginSchema,
@@ -242,4 +254,5 @@ export default {
   validateLogin,
   validateResetPassword,
   validateProfileUpdate,
+  validateChangePassword,
 };
