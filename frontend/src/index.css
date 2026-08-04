@@ -1,0 +1,128 @@
+/* frontend/src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet CSS required for maps */
+@import 'leaflet/dist/leaflet.css';
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #15803d;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #166534;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Gradient text utility */
+.text-gradient-ethiopia {
+  background: linear-gradient(to right, #078930, #fcdd09, #da121a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Custom marker styles for Map component */
+.custom-marker {
+  transition: all 0.3s ease;
+}
+
+.custom-marker:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 10px rgba(22, 163, 74, 0.5));
+}
+
+/* Toast animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-top {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.toast-enter-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.toast-enter-left {
+  animation: slide-in-left 0.3s ease-out forwards;
+}
+
+.toast-enter-top {
+  animation: slide-in-top 0.3s ease-out forwards;
+}
+
+.toast-enter-bottom {
+  animation: slide-in-bottom 0.3s ease-out forwards;
+}
