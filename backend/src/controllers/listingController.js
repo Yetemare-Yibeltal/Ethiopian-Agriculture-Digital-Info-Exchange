@@ -1,4 +1,5 @@
 // backend/src/controllers/listingController.js
+import { supabase } from "../config/supabase.js";
 import { Listing } from "../models/Listing.js";
 import { Farmer } from "../models/Farmer.js";
 import { Offer } from "../models/Offer.js";
@@ -212,14 +213,18 @@ export const getListings = async (req, res) => {
     };
 
     // Get listings
-    const { data: listings, error, count } = await Listing.listActive(filters);
+    const {
+      data: listings,
+      error: fetchError,
+      count,
+    } = await Listing.listActive(filters);
 
-    if (error) {
-      console.error("❌ Listings fetch error:", error.message);
+    if (fetchError) {
+      console.error("❌ Listings fetch error:", fetchError.message);
       return serverErrorResponse({
         res,
         message: "Failed to fetch listings",
-        error: error,
+        error: fetchError,
       });
     }
 
