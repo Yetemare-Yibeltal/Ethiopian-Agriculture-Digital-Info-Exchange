@@ -1,193 +1,153 @@
 // frontend/src/services/adminService.js
 import { supabase } from "../utils/supabase.js";
-import { API_ENDPOINTS } from "../utils/constants.js";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+/**
+ * Admin Service - Real API calls to backend
+ */
 export const adminService = {
+  /**
+   * Get system statistics from /api/admin/stats
+   */
   async getSystemStats() {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("role", { count: "exact" });
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
 
-      if (error) throw error;
+      const response = await fetch(`${API_URL}/admin/stats`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      // Count users by role
-      const users = data || [];
-      const totalUsers = users.length;
-      const managers = users.filter((u) => u.role === "manager").length;
-      const buyers = users.filter((u) => u.role === "buyer").length;
-      const admins = users.filter((u) => u.role === "admin").length;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch stats");
+      }
 
-      // Get listing stats
-      const { data: listings, error: listErr } = await supabase
-        .from("listings")
-        .select("status", { count: "exact" });
-
-      if (listErr) throw listErr;
-
-      const totalListings = listings.length;
-      const activeListings = listings.filter(
-        (l) => l.status === "active",
-      ).length;
-      const reservedListings = listings.filter(
-        (l) => l.status === "reserved",
-      ).length;
-      const completedListings = listings.filter(
-        (l) => l.status === "completed",
-      ).length;
-      const expiredListings = listings.filter(
-        (l) => l.status === "expired",
-      ).length;
-      const expiringSoon = listings.filter(
-        (l) =>
-          l.status === "active" &&
-          new Date(l.expiry_date) <
-            new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      ).length;
-
-      // Get farmers
-      const { count: totalFarmers, error: farmErr } = await supabase
-        .from("farmers")
-        .select("*", { count: "exact", head: true });
-
-      if (farmErr) throw farmErr;
-
-      const { count: activeFarmers, error: activeFarmErr } = await supabase
-        .from("farmers")
-        .select("*", { count: "exact", head: true })
-        .eq("is_active", true);
-
-      if (activeFarmErr) throw activeFarmErr;
-
-      // Get offers
-      const { data: offers, error: offerErr } = await supabase
-        .from("offers")
-        .select("status", { count: "exact" });
-
-      if (offerErr) throw offerErr;
-
-      const totalOffers = offers.length;
-      const pendingOffers = offers.filter((o) => o.status === "pending").length;
-      const acceptedOffers = offers.filter(
-        (o) => o.status === "accepted",
-      ).length;
-      const rejectedOffers = offers.filter(
-        (o) => o.status === "rejected",
-      ).length;
-
-      // New users today
-      const today = new Date().toISOString().split("T")[0];
-      const { count: newUsersToday } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today);
-
-      // New listings today
-      const { count: newListingsToday } = await supabase
-        .from("listings")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today);
-
-      // New farmers today
-      const { count: newFarmersToday } = await supabase
-        .from("farmers")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today);
-
+      const result = await response.json();
       return {
         success: true,
-        data: {
-          users: {
-            total: totalUsers,
-            managers,
-            buyers,
-            admins,
-            new_today: newUsersToday || 0,
-          },
-          listings: {
-            total: totalListings,
-            active: activeListings,
-            reserved: reservedListings,
-            completed: completedListings,
-            expired: expiredListings,
-            new_today: newListingsToday || 0,
-            expiring_soon: expiringSoon || 0,
-          },
-          farmers: {
-            total: totalFarmers || 0,
-            active: activeFarmers || 0,
-            new_today: newFarmersToday || 0,
-          },
-          offers: {
-            total: totalOffers,
-            pending: pendingOffers,
-            accepted: acceptedOffers,
-            rejected: rejectedOffers,
-          },
-        },
+        data: result.data,
       };
     } catch (error) {
-      console.error("System stats error:", error.message);
+      console.error("❌ System stats error:", error.message);
       return { success: false, error: error.message };
     }
   },
 
-  async getUsers({ page = 1, limit = 20, role = null, search = null } = {}) {
+  /**
+   * Get users from /api/admin/users
+   */
+  async getUsers({
+    page = 1,
+    limit = 20,
+    role = null,
+    search = null,
+    sort_by = "created_at",
+    sort_order = "desc",
+  } = {}) {
     try {
-      let query = supabase
-        .from("profiles")
-        .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range((page - 1) * limit, page * limit - 1);
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
 
-      if (role) query = query.eq("role", role);
-      if (search)
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        sort_by,
+        sort_order,
+      });
 
-      const { data, error, count } = await query;
+      if (role) params.append("role", role);
+      if (search) params.append("search", search);
 
-      if (error) throw error;
+      const response = await fetch(
+        `${API_URL}/admin/users?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-      return { success: true, data, count };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch users");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data || [],
+        count: result.meta?.pagination?.total || 0,
+      };
     } catch (error) {
-      console.error("Get users error:", error.message);
+      console.error("❌ Get users error:", error.message);
       return { success: false, error: error.message, data: [] };
     }
   },
 
+  /**
+   * Get listings from /api/admin/listings
+   */
   async getListings({
     page = 1,
     limit = 20,
     status = null,
     search = null,
+    sort_by = "created_at",
+    sort_order = "desc",
   } = {}) {
     try {
-      let query = supabase
-        .from("listings")
-        .select("*, profiles:manager_id (full_name)", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range((page - 1) * limit, page * limit - 1);
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
 
-      if (status) query = query.eq("status", status);
-      if (search) query = query.ilike("product_name", `%${search}%`);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        sort_by,
+        sort_order,
+      });
 
-      const { data, error, count } = await query;
+      if (status) params.append("status", status);
+      if (search) params.append("search", search);
 
-      if (error) throw error;
+      const response = await fetch(
+        `${API_URL}/admin/listings?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-      // Map manager name
-      const mapped = data.map((item) => ({
-        ...item,
-        manager_name: item.profiles?.full_name || "Unknown",
-      }));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch listings");
+      }
 
-      return { success: true, data: mapped, count };
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data || [],
+        count: result.meta?.pagination?.total || 0,
+      };
     } catch (error) {
-      console.error("Get listings error:", error.message);
+      console.error("❌ Get listings error:", error.message);
       return { success: false, error: error.message, data: [] };
     }
   },
 
+  /**
+   * Broadcast notification via /api/admin/notifications/broadcast
+   */
   async broadcastNotification({
     title,
     message,
@@ -195,12 +155,240 @@ export const adminService = {
     target_roles = null,
   }) {
     try {
-      // In real implementation, you'd call an edge function or backend endpoint
-      // For now, we'll simulate success.
-      // You can replace this with actual API call to /api/admin/notifications/broadcast
-      return { success: true, message: "Broadcast sent successfully" };
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(`${API_URL}/admin/notifications/broadcast`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title,
+          message,
+          type,
+          target_roles,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to send broadcast");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data,
+        message: result.message || "Broadcast sent successfully",
+      };
     } catch (error) {
+      console.error("❌ Broadcast error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get platform analytics from /api/admin/analytics
+   */
+  async getAnalytics({ period = "30d" } = {}) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(
+        `${API_URL}/admin/analytics?period=${period}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch analytics");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data,
+      };
+    } catch (error) {
+      console.error("❌ Analytics error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get user by ID from /api/admin/users/:id
+   */
+  async getUserById(userId) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch user");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data,
+      };
+    } catch (error) {
+      console.error("❌ Get user error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Update user via /api/admin/users/:id
+   */
+  async updateUser(userId, updates) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update user");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data,
+        message: result.message || "User updated successfully",
+      };
+    } catch (error) {
+      console.error("❌ Update user error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Delete user via /api/admin/users/:id
+   */
+  async deleteUser(userId) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete user");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || "User deleted successfully",
+      };
+    } catch (error) {
+      console.error("❌ Delete user error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Force delete listing via /api/admin/listings/:id
+   */
+  async forceDeleteListing(listingId) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(`${API_URL}/admin/listings/${listingId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete listing");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        message: result.message || "Listing deleted successfully",
+      };
+    } catch (error) {
+      console.error("❌ Delete listing error:", error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Cancel offer via /api/admin/offers/:id/cancel
+   */
+  async cancelOffer(offerId) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session
+        ?.access_token;
+
+      const response = await fetch(
+        `${API_URL}/admin/offers/${offerId}/cancel`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to cancel offer");
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result.data,
+        message: result.message || "Offer cancelled successfully",
+      };
+    } catch (error) {
+      console.error("❌ Cancel offer error:", error.message);
       return { success: false, error: error.message };
     }
   },
 };
+
+export default adminService;
