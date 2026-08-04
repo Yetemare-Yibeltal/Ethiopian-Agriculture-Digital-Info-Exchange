@@ -8,10 +8,18 @@ import React, {
 } from 'react'
 import Toast from './Toast.jsx'
 
-// Create and export the context
+// ✅ EXPORT THE CONTEXT
 export const ToastContext = createContext(null)
 
-// Provider component
+// ✅ EXPORT THE HOOK
+export const useToast = () => {
+  const context = useContext(ToastContext)
+  if (!context) {
+    throw new Error('useToast must be used within a ToasterProvider')
+  }
+  return context
+}
+
 export const ToasterProvider = ({
   children,
   position = 'top-right',
@@ -47,6 +55,7 @@ export const ToasterProvider = ({
           toast.showProgress !== undefined ? toast.showProgress : true,
         onDismiss: toast.onDismiss || null
       }
+
       setToasts(prev => {
         const isDuplicate = prev.some(
           t =>
@@ -59,38 +68,52 @@ export const ToasterProvider = ({
         if (newToasts.length > maxToasts) return newToasts.slice(-maxToasts)
         return newToasts
       })
+
       return id
     },
     [generateId, defaultDuration, variant, position, darkMode, maxToasts]
   )
 
-  const removeToast = useCallback(
-    id => setToasts(prev => prev.filter(toast => toast.id !== id)),
-    []
-  )
-  const clearToasts = useCallback(() => setToasts([]), [])
+  const removeToast = useCallback(id => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }, [])
+
+  const clearToasts = useCallback(() => {
+    setToasts([])
+  }, [])
 
   const success = useCallback(
-    (message, options = {}) =>
-      addToast({ type: 'success', message, ...options }),
+    (message, options = {}) => {
+      return addToast({ type: 'success', message, ...options })
+    },
     [addToast]
   )
+
   const error = useCallback(
-    (message, options = {}) => addToast({ type: 'error', message, ...options }),
+    (message, options = {}) => {
+      return addToast({ type: 'error', message, ...options })
+    },
     [addToast]
   )
+
   const info = useCallback(
-    (message, options = {}) => addToast({ type: 'info', message, ...options }),
+    (message, options = {}) => {
+      return addToast({ type: 'info', message, ...options })
+    },
     [addToast]
   )
+
   const warning = useCallback(
-    (message, options = {}) =>
-      addToast({ type: 'warning', message, ...options }),
+    (message, options = {}) => {
+      return addToast({ type: 'warning', message, ...options })
+    },
     [addToast]
   )
+
   const loading = useCallback(
-    (message, options = {}) =>
-      addToast({ type: 'loading', message, duration: 0, ...options }),
+    (message, options = {}) => {
+      return addToast({ type: 'loading', message, duration: 0, ...options })
+    },
     [addToast]
   )
 
@@ -102,11 +125,16 @@ export const ToasterProvider = ({
   }, [])
 
   const getToast = useCallback(
-    id => toasts.find(toast => toast.id === id) || null,
+    id => {
+      return toasts.find(toast => toast.id === id) || null
+    },
     [toasts]
   )
+
   const isToastActive = useCallback(
-    id => toasts.some(toast => toast.id === id),
+    id => {
+      return toasts.some(toast => toast.id === id)
+    },
     [toasts]
   )
 
@@ -125,6 +153,7 @@ export const ToasterProvider = ({
     isToastActive
   }
 
+  // Group toasts by position
   const groupedToasts = toasts.reduce((acc, toast) => {
     const pos = toast.position || position
     if (!acc[pos]) acc[pos] = []
@@ -183,5 +212,7 @@ export const ToasterProvider = ({
 
 export const Toaster = ToasterProvider
 
-// Default export for convenience
+Toaster.displayName = 'Toaster'
+ToasterProvider.displayName = 'ToasterProvider'
+
 export default Toaster
