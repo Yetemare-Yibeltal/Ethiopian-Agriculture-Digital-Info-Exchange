@@ -26,8 +26,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery.js'
 import Button from '../ui/Button.jsx'
 import Avatar from '../ui/Avatar.jsx'
 import Badge from '../ui/Badge.jsx'
-import DropdownMenu from '../ui/DropdownMenu.jsx'
-import Separator from '../ui/Separator.jsx' // ✅ FIXED: default import
+import Separator from '../ui/Separator.jsx'
 
 const Layout = ({ children }) => {
   const navigate = useNavigate()
@@ -306,9 +305,7 @@ const Layout = ({ children }) => {
           isMobile ? 'pt-16' : ''
         }`}
       >
-        <div className='p-4 md:p-6 max-w-7xl mx-auto'>
-          <Outlet />
-        </div>
+        <div className='p-4 md:p-6 max-w-7xl mx-auto'>{children}</div>
       </main>
 
       {/* Overlay */}
