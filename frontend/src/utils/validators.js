@@ -26,10 +26,8 @@ export const validateEmail = (email) => {
 export const validateEthiopianPhone = (phone) => {
   if (!phone) return { valid: false, error: "Phone number is required" };
 
-  // Clean the phone number
   const cleaned = phone.replace(/\s+/g, "").replace(/[^0-9+]/g, "");
 
-  // Check against Ethiopian phone pattern
   const pattern = /^(09|07|2519|2517|\+2519|\+2517)[0-9]{8}$/;
   if (!pattern.test(cleaned)) {
     return {
@@ -84,6 +82,43 @@ export const validatePassword = (password) => {
   }
 
   return { valid: true, error: null };
+};
+
+/**
+ * Validate password strength and return score (for UI indicator)
+ * @param {string} password - The password to check
+ * @returns {Object} { score: 0-4, label: string, color: string }
+ */
+export const validatePasswordStrength = (password) => {
+  if (!password) return { score: 0, label: "Weak", color: "red" };
+
+  let score = 0;
+
+  // Length
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+
+  // Contains uppercase
+  if (/[A-Z]/.test(password)) score++;
+
+  // Contains number
+  if (/\d/.test(password)) score++;
+
+  // Contains special character
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  // Normalize score to 0-4
+  score = Math.min(score, 4);
+
+  const map = {
+    0: { label: "Weak", color: "red" },
+    1: { label: "Weak", color: "red" },
+    2: { label: "Fair", color: "orange" },
+    3: { label: "Good", color: "yellow" },
+    4: { label: "Strong", color: "green" },
+  };
+
+  return { score, ...map[score] };
 };
 
 /**
@@ -600,6 +635,7 @@ export default {
   validateEthiopianPhone,
   validatePhone,
   validatePassword,
+  validatePasswordStrength,
   validatePasswordMatch,
   validateName,
   validateProductName,
