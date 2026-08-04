@@ -8,46 +8,28 @@ import React, {
 } from 'react'
 import Toast from './Toast.jsx'
 
-// =============================================
-// TOAST CONTEXT
-// =============================================
-const ToastContext = createContext(null)
+// Create and export the context
+export const ToastContext = createContext(null)
 
-export const useToast = () => {
-  const context = useContext(ToastContext)
-  if (!context) {
-    throw new Error('useToast must be used within a ToasterProvider')
-  }
-  return context
-}
-
-// =============================================
-// TOASTER PROVIDER
-// =============================================
+// Provider component
 export const ToasterProvider = ({
   children,
   position = 'top-right',
   maxToasts = 5,
   defaultDuration = 5000,
-  darkMode = false,
   variant = 'ethiopianGreen',
+  darkMode = false,
   className = '',
   ...props
 }) => {
   const [toasts, setToasts] = useState([])
   const idCounterRef = useRef(0)
 
-  // =============================================
-  // GENERATE UNIQUE ID
-  // =============================================
   const generateId = useCallback(() => {
     idCounterRef.current += 1
     return `toast-${Date.now()}-${idCounterRef.current}`
   }, [])
 
-  // =============================================
-  // ADD TOAST
-  // =============================================
   const addToast = useCallback(
     toast => {
       const id = toast.id || generateId()
@@ -65,97 +47,69 @@ export const ToasterProvider = ({
           toast.showProgress !== undefined ? toast.showProgress : true,
         onDismiss: toast.onDismiss || null
       }
-
       setToasts(prev => {
-        // Check for duplicate (same message and type)
         const isDuplicate = prev.some(
           t =>
             t.message === newToast.message &&
             t.type === newToast.type &&
             t.title === newToast.title
         )
-
         if (isDuplicate) return prev
-
         const newToasts = [...prev, newToast]
-
-        // Limit number of toasts
-        if (newToasts.length > maxToasts) {
-          return newToasts.slice(-maxToasts)
-        }
-
+        if (newToasts.length > maxToasts) return newToasts.slice(-maxToasts)
         return newToasts
       })
-
       return id
     },
     [generateId, defaultDuration, variant, position, darkMode, maxToasts]
   )
 
-  // =============================================
-  // REMOVE TOAST
-  // =============================================
-  const removeToast = useCallback(id => {
-    setToasts(prev => prev.filter(toast => toast.id !== id))
-  }, [])
+  const removeToast = useCallback(
+    id => setToasts(prev => prev.filter(toast => toast.id !== id)),
+    []
+  )
+  const clearToasts = useCallback(() => setToasts([]), [])
 
-  // =============================================
-  // CLEAR ALL TOASTS
-  // =============================================
-  const clearToasts = useCallback(() => {
-    setToasts([])
-  }, [])
-
-  // =============================================
-  // TOAST HELPERS
-  // =============================================
   const success = useCallback(
-    (message, options = {}) => {
-      return addToast({ type: 'success', message, ...options })
-    },
+    (message, options = {}) =>
+      addToast({ type: 'success', message, ...options }),
     [addToast]
   )
-
   const error = useCallback(
-    (message, options = {}) => {
-      return addToast({ type: 'error', message, ...options })
-    },
+    (message, options = {}) => addToast({ type: 'error', message, ...options }),
     [addToast]
   )
-
   const info = useCallback(
-    (message, options = {}) => {
-      return addToast({ type: 'info', message, ...options })
-    },
+    (message, options = {}) => addToast({ type: 'info', message, ...options }),
     [addToast]
   )
-
   const warning = useCallback(
-    (message, options = {}) => {
-      return addToast({ type: 'warning', message, ...options })
-    },
+    (message, options = {}) =>
+      addToast({ type: 'warning', message, ...options }),
     [addToast]
   )
-
   const loading = useCallback(
-    (message, options = {}) => {
-      return addToast({ type: 'loading', message, duration: 0, ...options })
-    },
+    (message, options = {}) =>
+      addToast({ type: 'loading', message, duration: 0, ...options }),
     [addToast]
   )
 
-  // =============================================
-  // UPDATE TOAST
-  // =============================================
   const updateToast = useCallback((id, updates) => {
     setToasts(prev =>
       prev.map(toast => (toast.id === id ? { ...toast, ...updates } : toast))
     )
+    return true
   }, [])
 
-  // =============================================
-  // CONTEXT VALUE
-  // =============================================
+  const getToast = useCallback(
+    id => toasts.find(toast => toast.id === id) || null,
+    [toasts]
+  )
+  const isToastActive = useCallback(
+    id => toasts.some(toast => toast.id === id),
+    [toasts]
+  )
+
   const contextValue = {
     toasts,
     addToast,
@@ -166,12 +120,11 @@ export const ToasterProvider = ({
     info,
     warning,
     loading,
-    updateToast
+    updateToast,
+    getToast,
+    isToastActive
   }
 
-  // =============================================
-  // GROUP TOASTS BY POSITION
-  // =============================================
   const groupedToasts = toasts.reduce((acc, toast) => {
     const pos = toast.position || position
     if (!acc[pos]) acc[pos] = []
@@ -179,9 +132,6 @@ export const ToasterProvider = ({
     return acc
   }, {})
 
-  // =============================================
-  // POSITION CLASSES
-  // =============================================
   const positionClasses = {
     'top-right': 'fixed top-4 right-4 z-50 flex flex-col gap-2 items-end',
     'top-left': 'fixed top-4 left-4 z-50 flex flex-col gap-2 items-start',
@@ -193,16 +143,11 @@ export const ToasterProvider = ({
       'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center'
   }
 
-  // =============================================
-  // RENDER TOASTS BY POSITION
-  // =============================================
   const renderToasts = () => {
     return Object.entries(groupedToasts).map(([pos, toastList]) => (
       <div
         key={pos}
-        className={`${
-          positionClasses[pos] || positionClasses['top-right']
-        } ${className}`}
+        className={`${positionClasses[pos]} ${className}`}
         {...props}
       >
         {toastList.map(toast => (
@@ -236,12 +181,7 @@ export const ToasterProvider = ({
   )
 }
 
-// =============================================
-// TOASTER (Legacy alias for backward compatibility)
-// =============================================
 export const Toaster = ToasterProvider
 
-Toaster.displayName = 'Toaster'
-ToasterProvider.displayName = 'ToasterProvider'
-
+// Default export for convenience
 export default Toaster
