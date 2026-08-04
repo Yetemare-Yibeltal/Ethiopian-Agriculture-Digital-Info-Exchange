@@ -15,7 +15,6 @@ import {
   Bell,
   Sun,
   Moon,
-  Menu as MenuIcon,
   LayoutDashboard,
   List,
   PlusCircle,
@@ -28,7 +27,7 @@ import Button from '../ui/Button.jsx'
 import Avatar from '../ui/Avatar.jsx'
 import Badge from '../ui/Badge.jsx'
 import DropdownMenu from '../ui/DropdownMenu.jsx'
-import { Separator } from '../ui/Separator.jsx'
+import Separator from '../ui/Separator.jsx' // ✅ FIXED: default import
 
 const Layout = ({ children }) => {
   const navigate = useNavigate()
@@ -37,24 +36,17 @@ const Layout = ({ children }) => {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
-  const [notifications, setNotifications] = useState(3)
   const sidebarRef = useRef(null)
 
-  // Close sidebar on route change
-  useEffect(() => {
-    setIsSidebarOpen(false)
-  }, [location.pathname])
+  useEffect(() => setIsSidebarOpen(false), [location.pathname])
 
-  // Close sidebar on outside click
   useEffect(() => {
     const handleClickOutside = e => {
-      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target))
         setIsSidebarOpen(false)
-      }
     }
-    if (isSidebarOpen) {
+    if (isSidebarOpen)
       document.addEventListener('mousedown', handleClickOutside)
-    }
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isSidebarOpen])
 
@@ -62,17 +54,11 @@ const Layout = ({ children }) => {
     await logout()
     navigate('/login')
   }
-
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode)
-    if (!isDarkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    document.documentElement.classList.toggle('dark')
   }
 
-  // Navigation items based on role
   const navItems = [
     {
       label: 'Dashboard',
@@ -133,16 +119,13 @@ const Layout = ({ children }) => {
   }
 
   return (
-    <div
-      className={`min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300`}
-    >
+    <div className='min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300'>
       {/* Mobile Header */}
       <header className='lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3'>
         <div className='flex items-center justify-between'>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
-            aria-label='Toggle menu'
           >
             {isSidebarOpen ? (
               <X className='w-5 h-5' />
@@ -150,18 +133,15 @@ const Layout = ({ children }) => {
               <Menu className='w-5 h-5' />
             )}
           </button>
-
           <Link to='/' className='flex items-center gap-2'>
             <span className='text-lg font-bold bg-gradient-to-r from-ethiopia-green via-ethiopia-yellow to-ethiopia-red bg-clip-text text-transparent'>
               EADE
             </span>
           </Link>
-
           <div className='flex items-center gap-2'>
             <button
               onClick={toggleDarkMode}
               className='p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors'
-              aria-label='Toggle dark mode'
             >
               {isDarkMode ? (
                 <Sun className='w-5 h-5' />
@@ -182,15 +162,11 @@ const Layout = ({ children }) => {
       {/* Mobile Sidebar */}
       <div
         ref={sidebarRef}
-        className={`
-          lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900
-          border-r border-gray-200 dark:border-gray-800
-          transform transition-transform duration-300 ease-out
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className={`lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ease-out ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <div className='flex flex-col h-full'>
-          {/* Sidebar Header */}
           <div className='p-4 border-b border-gray-200 dark:border-gray-800'>
             <div className='flex items-center gap-3'>
               <Avatar
@@ -208,23 +184,17 @@ const Layout = ({ children }) => {
               </div>
             </div>
           </div>
-
-          {/* Navigation */}
           <nav className='flex-1 overflow-y-auto p-4'>
             <div className='space-y-1'>
               {filteredNavItems.map(item => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-xl
-                    transition-all duration-200
-                    ${
-                      isActivePath(item.path)
-                        ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }
-                  `}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                    isActivePath(item.path)
+                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
                 >
                   {item.icon}
                   <span className='font-medium'>{item.label}</span>
@@ -237,8 +207,6 @@ const Layout = ({ children }) => {
               ))}
             </div>
           </nav>
-
-          {/* Sidebar Footer */}
           <div className='p-4 border-t border-gray-200 dark:border-gray-800'>
             <button
               onClick={handleLogout}
@@ -253,7 +221,6 @@ const Layout = ({ children }) => {
 
       {/* Desktop Sidebar */}
       <aside className='hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex-col'>
-        {/* Logo */}
         <div className='p-4 border-b border-gray-200 dark:border-gray-800'>
           <Link to='/' className='flex items-center gap-3'>
             <div className='w-10 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 flex items-center justify-center text-white font-bold text-lg'>
@@ -269,8 +236,6 @@ const Layout = ({ children }) => {
             </div>
           </Link>
         </div>
-
-        {/* User Profile */}
         <div className='p-4 border-b border-gray-200 dark:border-gray-800'>
           <div className='flex items-center gap-3'>
             <Avatar
@@ -288,23 +253,17 @@ const Layout = ({ children }) => {
             </div>
           </div>
         </div>
-
-        {/* Navigation */}
         <nav className='flex-1 overflow-y-auto p-4'>
           <div className='space-y-1'>
             {filteredNavItems.map(item => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl
-                  transition-all duration-200
-                  ${
-                    isActivePath(item.path)
-                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }
-                `}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                  isActivePath(item.path)
+                    ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
               >
                 {item.icon}
                 <span className='font-medium'>{item.label}</span>
@@ -317,8 +276,6 @@ const Layout = ({ children }) => {
             ))}
           </div>
         </nav>
-
-        {/* Footer */}
         <div className='p-4 border-t border-gray-200 dark:border-gray-800 space-y-2'>
           <button
             onClick={toggleDarkMode}
@@ -345,18 +302,16 @@ const Layout = ({ children }) => {
 
       {/* Main Content */}
       <main
-        className={`
-        transition-all duration-300
-        lg:ml-64
-        ${isMobile ? 'pt-16' : ''}
-      `}
+        className={`transition-all duration-300 lg:ml-64 ${
+          isMobile ? 'pt-16' : ''
+        }`}
       >
         <div className='p-4 md:p-6 max-w-7xl mx-auto'>
           <Outlet />
         </div>
       </main>
 
-      {/* Overlay for mobile sidebar */}
+      {/* Overlay */}
       {isSidebarOpen && (
         <div
           className='lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm'
