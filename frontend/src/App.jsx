@@ -1,26 +1,26 @@
 // frontend/src/App.jsx
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from './context/AuthContext'
+import { useAuthStore } from './context/AuthContext.jsx'
 
 // Layout Components
-import Layout from './components/layout/Layout'
+import Layout from './components/layout/Layout.jsx'
+import AdminLayout from './components/layout/AdminLayout.jsx'
 
 // Pages
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import ListingForm from './pages/ListingForm'
-import ListingDetail from './pages/ListingDetail'
-import Search from './pages/Search'
-import MyListings from './pages/MyListings'
-import MyOffers from './pages/MyOffers'
-import Profile from './pages/Profile'
-import NotFound from './pages/NotFound'
-
-// Admin Pages
-import AdminDashboard from './pages/AdminDashboard'
-import AdminUsers from './pages/AdminUsers'
-import AdminListings from './pages/AdminListings'
+import Login from './pages/Login.jsx'
+import Register from './pages/Register.jsx'
+import Dashboard from './pages/Dashboard.jsx'
+import ListingForm from './pages/ListingForm.jsx'
+import ListingDetail from './pages/ListingDetail.jsx'
+import Search from './pages/Search.jsx'
+import MyListings from './pages/MyListings.jsx'
+import MyOffers from './pages/MyOffers.jsx'
+import Profile from './pages/Profile.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
+import AdminUsers from './pages/AdminUsers.jsx'
+import AdminListings from './pages/AdminListings.jsx'
+import NotFound from './pages/NotFound.jsx'
 
 function ProtectedRoute ({ children }) {
   const { user, loading } = useAuthStore()
@@ -41,6 +41,12 @@ function ProtectedRoute ({ children }) {
 }
 
 function App () {
+  const { initAuth } = useAuthStore()
+
+  useEffect(() => {
+    initAuth() // ✅ Initialize auth listener on app start
+  }, [])
+
   return (
     <BrowserRouter>
       <Routes>
@@ -62,6 +68,16 @@ function App () {
 
         <Route
           path='/new-listing'
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ListingForm />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/new-listing/:id'
           element={
             <ProtectedRoute>
               <Layout>
@@ -131,9 +147,9 @@ function App () {
           path='/admin'
           element={
             <ProtectedRoute>
-              <Layout>
+              <AdminLayout>
                 <AdminDashboard />
-              </Layout>
+              </AdminLayout>
             </ProtectedRoute>
           }
         />
@@ -142,9 +158,9 @@ function App () {
           path='/admin/users'
           element={
             <ProtectedRoute>
-              <Layout>
+              <AdminLayout>
                 <AdminUsers />
-              </Layout>
+              </AdminLayout>
             </ProtectedRoute>
           }
         />
@@ -153,14 +169,14 @@ function App () {
           path='/admin/listings'
           element={
             <ProtectedRoute>
-              <Layout>
+              <AdminLayout>
                 <AdminListings />
-              </Layout>
+              </AdminLayout>
             </ProtectedRoute>
           }
         />
 
-        {/* 404 Page */}
+        {/* 404 */}
         <Route path='*' element={<NotFound />} />
       </Routes>
     </BrowserRouter>
